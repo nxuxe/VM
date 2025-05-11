@@ -1,68 +1,44 @@
--- Services
-local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
 
-local localPlayer = Players.LocalPlayer
-local mouse = localPlayer:GetMouse()
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 
--- Function to create a highlight on a part
-local function createHighlight(part)
-    if not part:FindFirstChild("Highlight") then
-        local highlight = Instance.new("Highlight")
-        highlight.FillColor = Color3.fromRGB(255, 255, 0) -- Yellow fill
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- White outline
-        highlight.Parent = part
-    end
+-- Function to create a highlight on a part or model
+local function createHighlight(target)
+    -- Avoid duplicating highlights
+    if target:FindFirstChildOfClass("Highlight") then return end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "InteractionHighlight"
+    highlight.FillColor = Color3.fromRGB(255, 255, 0) -- Yellow fill
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- White outline
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = target
 end
 
--- Function to remove highlight from a part
-local function removeHighlight(part)
-    local highlight = part:FindFirstChild("Highlight")
-    if highlight then
-        highlight:Destroy()
-    end
-end
-
--- Function to initialize highlighting for a part
-local function initializeHighlighting(part)
-    local clickDetector = part:FindFirstChildOfClass("ClickDetector")
-    if not clickDetector then
-        clickDetector = Instance.new("ClickDetector")
-        clickDetector.MaxActivationDistance = 32 -- Adjust as needed
-        clickDetector.Parent = part
-    end
-
-    -- Mouse hover events
-    clickDetector.MouseHoverEnter:Connect(function()
-        createHighlight(part)
-    end)
-
-    clickDetector.MouseHoverLeave:Connect(function()
-        removeHighlight(part)
-    end)
-end
-
--- Connect to existing tagged parts
-for _, part in ipairs(CollectionService:GetTagged("Highlightable")) do
-    initializeHighlighting(part)
-end
-
--- Listen for new parts tagged as "Highlightable"
-CollectionService:GetInstanceAddedSignal("Highlightable"):Connect(function(part)
-    initializeHighlighting(part)
-end)
-
--- Alternative hover detection for touch devices
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        local target = mouse.Target
-        for _, part in ipairs(CollectionService:GetTagged("Highlightable")) do
-            if part == target then
-                createHighlight(part)
-            else
-                removeHighlight(part)
-            end
+-- Function to remove all interaction highlights
+local function removeAllHighlights()
+    for _, obj in ipairs(CollectionService:GetTagged("Interactive")) do
+        local highlight = obj:FindFirstChild("InteractionHighlight")
+        if highlight then
+            highlight:Destroy()
         end
     end
-end)
+end
+
+-- Function to handle click events
+local function onClick()
+    removeAllHighlights()
+    for _, obj in ipairs(CollectionService:GetTagged("Interactive")) do
+        createHighlight(obj)
+    end
+end
+
+-- Connect click event to parts/models with ClickDetectors
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("BasePart") and obj:FindFirstChildOfClass("ClickDetector") then
+        obj:FindFirstChildOfClass("ClickDetector").MouseClick:Connect(onClick)
+    end
+end
