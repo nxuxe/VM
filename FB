@@ -1,51 +1,37 @@
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+-- Table to keep track of highlighted objects
+local highlightedObjects = {}
 
-local displayedBillboards = {}
-
--- Function to create a BillboardGui for a part or model
-local function createBillboard(object)
-    if displayedBillboards[object] then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "NameDisplay"
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Adornee = object
-    billboard.Parent = playerGui
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.new(1, 1, 0) -- Yellow text
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.Text = object.Name
-    textLabel.Parent = billboard
-
-    displayedBillboards[object] = billboard
+-- Function to apply highlight to a part or model
+local function applyHighlight(object)
+    if not highlightedObjects[object] then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "InteractionHighlight"
+        highlight.FillColor = Color3.fromRGB(255, 255, 0) -- Yellow fill
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- White outline
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Adornee = object
+        highlight.Parent = object
+        highlightedObjects[object] = highlight
+    end
 end
 
--- Function to remove BillboardGui from objects no longer tagged
-local function removeObsoleteBillboards()
-    for object, billboard in pairs(displayedBillboards) do
+-- Function to remove highlight from objects no longer tagged
+local function removeObsoleteHighlights()
+    for object, highlight in pairs(highlightedObjects) do
         if not CollectionService:HasTag(object, "Interactive") then
-            billboard:Destroy()
-            displayedBillboards[object] = nil
+            highlight:Destroy()
+            highlightedObjects[object] = nil
         end
     end
 end
 
--- Continuous loop to manage BillboardGuis
+-- Continuous loop to apply highlights
 RunService.RenderStepped:Connect(function()
     for _, object in ipairs(CollectionService:GetTagged("Interactive")) do
-        createBillboard(object)
+        applyHighlight(object)
     end
-    removeObsoleteBillboards()
+    removeObsoleteHighlights()
 end)
