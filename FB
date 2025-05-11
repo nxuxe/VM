@@ -1,44 +1,37 @@
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
-local player = Players.LocalPlayer
-local mouse = player:GetMouse()
+-- Table to keep track of highlighted objects
+local highlightedObjects = {}
 
--- Function to create a highlight on a part or model
-local function createHighlight(target)
-    -- Avoid duplicating highlights
-    if target:FindFirstChildOfClass("Highlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "InteractionHighlight"
-    highlight.FillColor = Color3.fromRGB(255, 255, 0) -- Yellow fill
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- White outline
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = target
+-- Function to apply highlight to a part or model
+local function applyHighlight(object)
+    if not highlightedObjects[object] then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "InteractionHighlight"
+        highlight.FillColor = Color3.fromRGB(255, 255, 0) -- Yellow fill
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- White outline
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Adornee = object
+        highlight.Parent = object
+        highlightedObjects[object] = highlight
+    end
 end
 
--- Function to remove all interaction highlights
-local function removeAllHighlights()
-    for _, obj in ipairs(CollectionService:GetTagged("Interactive")) do
-        local highlight = obj:FindFirstChild("InteractionHighlight")
-        if highlight then
+-- Function to remove highlight from objects no longer tagged
+local function removeObsoleteHighlights()
+    for object, highlight in pairs(highlightedObjects) do
+        if not CollectionService:HasTag(object, "Interactive") then
             highlight:Destroy()
+            highlightedObjects[object] = nil
         end
     end
 end
 
--- Function to handle click events
-local function onClick()
-    removeAllHighlights()
-    for _, obj in ipairs(CollectionService:GetTagged("Interactive")) do
-        createHighlight(obj)
+-- Continuous loop to apply highlights
+RunService.RenderStepped:Connect(function()
+    for _, object in ipairs(CollectionService:GetTagged("Interactive")) do
+        applyHighlight(object)
     end
-end
-
--- Connect click event to parts/models with ClickDetectors
-for _, obj in ipairs(workspace:GetDescendants()) do
-    if obj:IsA("BasePart") and obj:FindFirstChildOfClass("ClickDetector") then
-        obj:FindFirstChildOfClass("ClickDetector").MouseClick:Connect(onClick)
-    end
-end
+    removeObsoleteHighlights()
+end)
